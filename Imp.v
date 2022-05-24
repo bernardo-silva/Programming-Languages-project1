@@ -172,7 +172,9 @@ Inductive com : Type :=
   | CAsgn (x : string) (a : aexp)
   | CSeq (c1 c2 : com)
   | CIf (b : bexp) (c1 c2 : com)
-  | CWhile (b : bexp) (c : com).
+  | CWhile (b : bexp) (c : com)
+  | CChoice (c1 c2 : com)
+  | CGuard (b : bexp) (c1 : com).
 
 (** As for expressions, we can use a few [Notation] declarations to
     make reading and writing Imp programs more convenient. *)
@@ -198,6 +200,14 @@ Notation "'while' x 'do' y 'end'" :=
          (CWhile x y)
             (in custom com at level 89, x at level 99, y at level 99) : com_scope.
 
+Notation "x !! y" :=
+         (CChoice x y)
+            (in custom com at level 89, right associativity) : com_scope.
+
+Notation "x -> y" :=
+         (CGuard x y)
+            (in custom com at level 89, no associativity) : com_scope.
+
 (**
   1.3. TODO: Define p1 and p2 as, respectively, the programs:
 
@@ -206,5 +216,6 @@ Notation "'while' x 'do' y 'end'" :=
                 X:=2
 
 *)
-Example p1 := (* TODO *).
-Example p2 := (* TODO *).
+
+Example p1 := <{(X := 1 !! X := 2); X=2 -> skip}>.
+Example p2 := <{X := 2}>.
