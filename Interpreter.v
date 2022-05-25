@@ -14,26 +14,53 @@ Inductive interpreter_result : Type :=
     bit of auxiliary notation to hide the plumbing involved in
     repeatedly matching against optional states. *)
 
-(*
-Notation "'LETOPT' x <== e1 'IN' e2"
+
+Notation "'LETOPT' st , c <== e1 'IN' e2"
   := (match e1 with
-          | Some x => e2
-          | None => None
+          | Success (st,c) => e2
+          | Fail => Fail
+          | OutOfGas => OutOfGas
        end)
 (right associativity, at level 60).
-*)
 
 (**
   2.1. TODO: Implement ceval_step as specified. To improve readability,
              you are strongly encouraged to define auxiliary notation.
              See the notation LETOPT in the ImpCEval chapter.
-*)
+**)
+
+Check (LETOPT st , c <== Success (("x" !-> 2),[]) IN Success (st,c)).
 
 Fixpoint ceval_step (st : state) (c : com) (continuation: list (state * com)) (i : nat)
                     : interpreter_result :=
   match i with
-  | (* TODO *)
-  | (* TODO *)
+  | 0 => OutOfGas
+  | S i' =>
+    match c with
+    | <{ skip }> => Success (st, continuation)
+    | <{ v := a1 }> => Success ((v !-> aeval st a1; st), continuation)
+    | <{ c1 ; c2 }> => 
+        LETOPT st' , cont' <== ceval_step st c1 continuation i' IN ceval_step st' c2 cont' i' 
+    | <{ if b then c1 else c2 end }> =>
+          if (beval st b)
+            then ceval_step st c1 continuation i'
+            else ceval_step st c2 continuation i'
+    | <{ while b1 do c1 end }> =>
+          if (beval st b1) then 
+            LETOPT st' , cont' <== ceval_step st c1 continuation i' IN 
+                ceval_step st' c cont' i'
+          else Success (st, continuation)
+    | <{ c1 !! c2 }> => 
+        ceval_step st c1 ((st,c2)::continuation) i'
+    | <{ b1 -> c1 }> => 
+      if (beval st b1)
+      then ceval_step st c1 continuation i'
+      else 
+        match continuation with
+         | (st', c')::t => ceval_step st' <{c';c}> t i'
+         | [] => Fail
+         end
+    end
   end.
 
 
@@ -114,7 +141,8 @@ Theorem p1_equals_p2: forall st cont,
   (exists i0,
     (forall i1, i1 >= i0 -> ceval_step st p1 cont i1 =  ceval_step st p2 cont i1)).
 Proof.
-  (* TODO *)
+  intros st cont. 
+  
 Qed.
 
 

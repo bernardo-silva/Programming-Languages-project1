@@ -1,6 +1,6 @@
 # Group Identification
 
- - FirstName LastName, IST number, Email
+ - Bernardo Silva, ist193365, bfalmeidasilva@tecnico.ulisboa.pt
  - FirstName LastName, IST number, Email
  - FirstName LastName, IST number, Email
 
