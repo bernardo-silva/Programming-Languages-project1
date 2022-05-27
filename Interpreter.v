@@ -137,12 +137,28 @@ Proof. auto. Qed.
   2.2. TODO: Prove p1_equals_p2. Recall that p1 and p2 are defined in Imp.v
 *)
 
+(* Proof.
+  induction i1 as [|i1']; intros i2 st st' c cont Hle Hceval. *)
+(*   - simpl in Hceval. discriminate Hceval. *)
+(*   - destruct i2 as [|i2']. inversion Hle. *)
+(*   assert (Hle': i1' <= i2') by lia. *)
+(*   destruct c; try apply Hceval. *)
+(*       + rewrite <- Hceval. simpl. destruct (ceval_step st c1 cont i2') eqn:Heqst1'o. *)
+(*         * apply (IHi1' i2') in Heqst1'o. *)
+(*   Assume. *)
+
 Theorem p1_equals_p2: forall st cont,
   (exists i0,
     (forall i1, i1 >= i0 -> ceval_step st p1 cont i1 =  ceval_step st p2 cont i1)).
 Proof.
-  intros st cont. 
-  
+  intros st cont.
+  eexists. instantiate (1:=5).
+  destruct i1. lia.
+  destruct i1. lia.
+  destruct i1. lia.
+  destruct i1. lia.
+  destruct i1. lia.
+  destruct i1; reflexivity.
 Qed.
 
 
@@ -155,5 +171,7 @@ Theorem ceval_step_more: forall i1 i2 st st' c cont cont',
   ceval_step st c cont i1 = Success (st', cont') ->
   ceval_step st c cont i2 = Success (st', cont').
 Proof.
-  (* TODO *)
+  induction i1 as [|i1']; intros i2 st st' c cont cont' Hle Hceval.
+  -simpl in Hceval. discriminate Hceval.
+  -
 Qed.
