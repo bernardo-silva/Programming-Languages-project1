@@ -172,6 +172,46 @@ Theorem ceval_step_more: forall i1 i2 st st' c cont cont',
   ceval_step st c cont i2 = Success (st', cont').
 Proof.
   induction i1 as [|i1']; intros i2 st st' c cont cont' Hle Hceval.
-  -simpl in Hceval. discriminate Hceval.
-  -
+  - simpl in Hceval. discriminate Hceval.
+  - destruct i2 as [|i2']. inversion Hle.
+  assert (Hle': i1' <= i2') by lia.
+  destruct c; try apply Hceval.
+    (* ; *)
+    -- simpl in Hceval. simpl. 
+       destruct (ceval_step st c1 cont i1') eqn:Heqst1'o; try discriminate.
+      --- destruct s as [st'' cont'']. 
+          apply (IHi1' i2') in Heqst1'o; 
+          try assumption.
+          rewrite Heqst1'o. 
+          apply (IHi1' i2') in Hceval; 
+          try assumption. 
+    (* if *)
+    -- simpl in Hceval. simpl. 
+       destruct (beval st b);
+       apply (IHi1' i2') in Hceval;
+       try assumption.
+    (* while *)
+    -- simpl in Hceval. simpl.
+       destruct (beval st b).
+       destruct (ceval_step st c cont i1') eqn: Heqst1'o; try discriminate.
+      --- destruct s as [st'' cont''].
+          apply (IHi1' i2') in Heqst1'o; 
+          try assumption.
+          rewrite Heqst1'o. 
+          apply (IHi1' i2') in Hceval; 
+          try assumption.
+      --- assumption.
+    (* !! *)
+    -- simpl in Hceval. simpl.
+       apply (IHi1' i2') in Hceval; 
+       try assumption. 
+    (* -> *)
+    -- simpl in Hceval. simpl.
+       destruct (beval st b).
+      --- apply (IHi1' i2') in Hceval; 
+          try assumption.
+      --- destruct cont; try discriminate.
+          destruct p.
+          apply (IHi1' i2') in Hceval;
+          assumption.
 Qed.
