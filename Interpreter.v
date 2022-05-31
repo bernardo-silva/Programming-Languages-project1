@@ -147,6 +147,12 @@ Proof. auto. Qed.
 (*         * apply (IHi1' i2') in Heqst1'o. *)
 (*   Assume. *)
 
+
+(* 
+  This therorem state that, given enough gas (i0),
+programs p1 and p2 will always evaluate to the same 
+resulta
+*)
 Theorem p1_equals_p2: forall st cont,
   (exists i0,
     (forall i1, i1 >= i0 -> ceval_step st p1 cont i1 =  ceval_step st p2 cont i1)).
@@ -166,19 +172,30 @@ Qed.
   2.3. TODO: Prove ceval_step_more.
 *)
 
+(* 
+  This therorem state that if a program
+ c is evaluated successfully with a given gas
+ it will always evalate to succeed with more gas
+*)
+
 Theorem ceval_step_more: forall i1 i2 st st' c cont cont',
   i1 <= i2 ->
   ceval_step st c cont i1 = Success (st', cont') ->
   ceval_step st c cont i2 = Success (st', cont').
 Proof.
-  induction i1 as [|i1']; intros i2 st st' c cont cont' Hle Hceval.
+  induction i1 as [|i1']; 
+  intros i2 st st' c cont cont' Hle Hceval.
+  (* i1 = 0 *)
   - simpl in Hceval. discriminate Hceval.
-  - destruct i2 as [|i2']. inversion Hle.
-  assert (Hle': i1' <= i2') by lia.
-  destruct c; try apply Hceval.
+  (* i1 = S i1' *)
+  - destruct i2 as [|i2']. 
+    inversion Hle.
+    assert (Hle': i1' <= i2') by lia.
+    destruct c; try apply Hceval;
+    simpl; simpl in Hceval.
     (* ; *)
-    -- simpl in Hceval. simpl. 
-       destruct (ceval_step st c1 cont i1') eqn:Heqst1'o; try discriminate.
+    -- destruct (ceval_step st c1 cont i1') eqn:Heqst1'o; 
+       try discriminate.
       --- destruct s as [st'' cont'']. 
           apply (IHi1' i2') in Heqst1'o; 
           try assumption.
@@ -186,13 +203,11 @@ Proof.
           apply (IHi1' i2') in Hceval; 
           try assumption. 
     (* if *)
-    -- simpl in Hceval. simpl. 
-       destruct (beval st b);
+    -- destruct (beval st b);
        apply (IHi1' i2') in Hceval;
        try assumption.
     (* while *)
-    -- simpl in Hceval. simpl.
-       destruct (beval st b).
+    -- destruct (beval st b).
        destruct (ceval_step st c cont i1') eqn: Heqst1'o; try discriminate.
       --- destruct s as [st'' cont''].
           apply (IHi1' i2') in Heqst1'o; 
@@ -202,12 +217,10 @@ Proof.
           try assumption.
       --- assumption.
     (* !! *)
-    -- simpl in Hceval. simpl.
-       apply (IHi1' i2') in Hceval; 
+    -- apply (IHi1' i2') in Hceval; 
        try assumption. 
     (* -> *)
-    -- simpl in Hceval. simpl.
-       destruct (beval st b).
+    -- destruct (beval st b).
       --- apply (IHi1' i2') in Hceval; 
           try assumption.
       --- destruct cont; try discriminate.

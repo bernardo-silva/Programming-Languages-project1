@@ -33,7 +33,54 @@ Reserved Notation "st1 '/' q1 '=[' c ']=>' st2 '/' q2 '/' r"
 Inductive ceval : com -> state -> list (state * com) -> 
           result -> state -> list (state * com) -> Prop :=
 | E_Skip : forall st q,
- st / q =[ skip ]=> st / q / Success
+    st / q =[ skip ]=> st / q / Success
+| E_Asng : forall st q a n x,
+    aeval st a = n ->
+    st / q =[ x := a ]=> (x !-> n;st) / q / Success
+| E_Seq : forall c1 c2 st st' st'' q q' q'' result,
+    st / q =[ c1 ]=> st' / q' / Success ->
+    st' / q' =[ c2 ]=> st'' / q'' / result ->
+    st / q =[ c1 ; c2 ]=> st'' / q'' / result
+(* | E_SeqFail1 : forall c1 c2 st q, *)
+(*     st / q =[ c1 ]=> st / q / Fail -> *)
+(*     st / q =[ c1 ; c2 ]=> st / q / Fail *)
+(* | E_SeqFail2 : forall c1 c2 st st' q, *)
+(*     st / q =[ c1 ]=> st' / [] / Success -> *)
+(*     st' / [] =[ c2 ]=> empty_st / [] / Fail -> *)
+(*     st / q =[ c1 ; c2 ]=> empty_st / []  / Fail *)
+| E_IfTrue  : forall st st' q q' b c1 c2,
+    beval st b = true ->
+    st / q =[ c1 ]=> st' / q' / Success ->
+    st / q =[ if b then c1 else c2 end ]=> st' / q' / Success
+| E_IfFalse  : forall st st' q q' b c1 c2,
+    beval st b = false ->
+    st / q =[ c2 ]=> st' / q' / Success ->
+    st / q =[ if b then c1 else c2 end ]=> st' / q' / Success
+| E_WhileTrue  : forall st st' st'' q q' q'' b c,
+    beval st b = true ->
+    st / q =[ c ]=> st' / q' / Success ->
+    st' / q' =[ while b do c end ]=> st'' / q'' / Success ->
+    st / q =[ while b do c end ]=> st'' / q'' / Success
+| E_Choice1 : forall st st' q q' c1 c2,
+    st / ((st , c2)::q) =[ c1 ]=> st' / q' / Success ->
+    st / q =[ c1 !! c2 ]=> st' / q' / Success
+| E_Choice2 : forall st st' q q' c1 c2,
+    st / ((st , c1)::q) =[ c2 ]=> st' / q' / Success ->
+    st / q =[ c1 !! c2 ]=> st' / q' / Success
+| E_GuardTrue : forall st st' q q' b c,
+    beval st b = true ->
+    st / q =[ c ]=> st' / q' / Success ->
+    st / q =[ b -> c ]=> st' / q' / Success
+| E_GuardFalseCont : forall st st' st'' st''' q q' q'' t b c1 c2 ,
+    beval st b = false ->
+    q = (st', c1)::t -> 
+    st' / t =[ c1 ]=> st'' / q' / Success ->
+    beval st'' b = true ->
+    st'' / q' =[ c2 ]=> st'''/ q'' / Success ->
+    st / q =[ b -> c2 ]=> st''' / q'' / Success
+| E_GuardFalseEmpty : forall st b c,
+    beval st b = false ->
+    st / [] =[ b -> c]=> empty_st / [] / Fail
 (* TODO. Hint: follow the same structure as shown in the chapter Imp *)
 where "st1 '/' q1 '=[' c ']=>' st2 '/' q2 '/' r" := (ceval c st1 q1 r st2 q2).
 
@@ -53,7 +100,11 @@ if (X <= 1)
 end
 ]=> (Z !-> 4 ; X !-> 2) / [] / Success.
 Proof.
-  (* TODO *)
+  apply E_Seq with (X !-> 2) [].
+    - apply E_Asng. reflexivity.
+    - apply E_IfFalse.
+      reflexivity.
+      apply E_Asng. reflexivity.
 Qed.
 
 
@@ -63,7 +114,12 @@ empty_st / [] =[
    (X = 1) -> X:=3
 ]=> (empty_st) / [] / Fail.
 Proof.
-  (* TODO *)
+  eapply E_Seq.
+  - apply E_Asng. reflexivity.
+  - apply E_GuardFalseEmpty. reflexivity.
+(*   eapply E_SeqFail2 with(X !-> 2). *)
+(*     - apply E_Asng. reflexivity. *)
+(*     - apply E_GuardFalseEmpty. reflexivity.    *)
 Qed. 
 
 Example ceval_example_guard2:
@@ -72,16 +128,28 @@ empty_st / [] =[
    (X = 2) -> X:=3
 ]=> (X !-> 3 ; X !-> 2) / [] / Success.
 Proof.
-  (* TODO *)
+  apply E_Seq with (X!->2) [].
+    - apply E_Asng. reflexivity.
+    - apply E_GuardTrue.
+      -- reflexivity.
+      -- apply E_Asng. reflexivity.
 Qed. 
 
 Example ceval_example_guard3: exists q,
 empty_st / [] =[
    (X := 1 !! X := 2);
-   (X = 2) -> X:=3
+   (X = 2) -> X := 3
 ]=> (X !-> 3) / q / Success.
 Proof.
-  (* TODO *)
+  eexists ?[x].
+  apply E_Seq with (X!->2) ?x.
+  - apply E_Choice2.
+    apply E_Asng. reflexivity.
+  - apply E_GuardTrue.
+    -- reflexivity.
+    -- assert ((X!->3 ; X!->2)=(X!->3)) by (apply t_update_shadow).
+       rewrite <- H.
+       apply E_Asng. reflexivity.
 Qed.
     
 Example ceval_example_guard4: exists q,
@@ -90,7 +158,26 @@ empty_st / [] =[
    (X = 2) -> X:=3
 ]=> (X !-> 3) / q / Success.
 Proof.
-  (* TODO *)
+  eexists.
+  eapply E_Seq.
+  - apply E_Choice1. apply E_Asng. reflexivity.
+  - eapply E_GuardFalseCont; try reflexivity.
+    -- apply E_Asng. reflexivity.
+    -- reflexivity.
+    -- assert ((X!->3 ; X!->2)=(X!->3)) by (apply t_update_shadow).
+       rewrite <- H.
+       apply E_Asng.
+       reflexivity.
+(*
+  eexists ?[x].
+  apply E_Seq with (X!->1) [(empty_st,<{X:=2}>)].
+  - apply E_Choice1. apply E_Asng. reflexivity.
+  - apply E_GuardFalseCont with empty_st (X!->2) [] [] <{ X := 2 }>; try reflexivity.
+    -- apply E_Asng. reflexivity.
+    -- assert ((X!->3 ; X!->2)=(X!->3)) by (apply t_update_shadow).
+       rewrite <- H.
+       apply E_Asng.
+       reflexivity.*)
 Qed.
 
 
@@ -117,21 +204,89 @@ Lemma cequiv_ex1:
 <{ X := 2; X = 2 -> skip }> == 
 <{ X := 2 }>.
 Proof.
-  (* TODO *)
+  split.
+  - eexists. instantiate (1:=q2).
+    inversion H; subst.
+    inversion H2; subst. simpl in H2.
+    inversion H8; subst. simpl in H8.
+    inversion H10; subst. simpl in H10.
+    clear H3.
+    -- eapply E_Asng. reflexivity.
+    -- discriminate.
+    -- discriminate.
+  - eexists.
+    inversion H; subst.
+    eapply E_Seq.
+      -- apply E_Asng. reflexivity.
+      -- simpl. apply E_GuardTrue.
+        --- reflexivity.
+        --- apply E_Skip.
 Qed.
 
 Lemma cequiv_ex2:
 <{ (X := 1 !! X := 2); X = 2 -> skip }> == 
 <{ X := 2 }>.
 Proof.
-  (* TODO *)
+  split.
+  (*   <{ X := 1 !! X := 2; X = 2 -> skip }> =
+  <{ X := 2 }> *)
+  - unfold cequiv_imp. intros.
+    inversion H; subst.
+    inversion H2; subst. simpl in H2. 
+    inversion H5; subst. simpl in H5.
+    inversion H8; subst. simpl in H8.
+    inversion H11; subst. simpl in H11.
+    (* Choice 1 - Guard true *)
+    -- discriminate.
+    (* Choice 1 - Guard false *)
+    -- inversion H14; subst. 
+       (*symmetry in H4*)
+       inversion H4; subst.
+       inversion H6; subst.
+       eexists.
+       eapply E_Asng. reflexivity.
+    (* Choice 2 - Guard true *)
+    -- inversion H5; subst. simpl in H5.
+       inversion H8; subst.
+       eexists.
+      --- inversion H11; subst.
+          inversion H3; subst.
+          eapply E_Asng. reflexivity.
+      --- discriminate.  
+  - eexists.
+    inversion H; subst; simpl in H.
+    simpl.
+    eapply E_Seq.
+    -- eapply E_Choice2. 
+       eapply E_Asng. reflexivity.
+    -- simpl. eapply E_GuardTrue; 
+       try reflexivity.
+       eapply E_Skip.
 Qed.
 
 
 Lemma choice_idempotent: forall c,
 <{ c !! c }> == <{ c }>.
 Proof.
-  (* TODO *)
+  split.
+    - eexists.
+    inversion H; subst.
+    -- 
+  
+  - destruct c; unfold cequiv_imp; intros;
+    inversion H; subst;
+    inversion H7; subst; eexists.
+    -- eapply E_Skip.
+    -- eapply E_Skip.
+    -- eapply E_Asng. reflexivity.
+    -- eapply E_Asng. reflexivity.
+    -- inversion H9; inversion H2;
+    inversion H7; inversion H11; subst.
+    --- eapply E_Seq. eexists. eapply E_Skip.
+    -- eexists. eapply E_Asng. reflexivity.
+    -- eexists. admit.
+    -- inversion H1; subst.
+      --- .
 Qed.
 
 Lemma choice_comm: forall c1 c2,
