@@ -41,13 +41,6 @@ Inductive ceval : com -> state -> list (state * com) ->
     st / q =[ c1 ]=> st' / q' / Success ->
     st' / q' =[ c2 ]=> st'' / q'' / result ->
     st / q =[ c1 ; c2 ]=> st'' / q'' / result
-(* | E_SeqFail1 : forall c1 c2 st q, *)
-(*     st / q =[ c1 ]=> st / q / Fail -> *)
-(*     st / q =[ c1 ; c2 ]=> st / q / Fail *)
-(* | E_SeqFail2 : forall c1 c2 st st' q, *)
-(*     st / q =[ c1 ]=> st' / [] / Success -> *)
-(*     st' / [] =[ c2 ]=> empty_st / [] / Fail -> *)
-(*     st / q =[ c1 ; c2 ]=> empty_st / []  / Fail *)
 | E_IfTrue  : forall st st' q q' b c1 c2,
     beval st b = true ->
     st / q =[ c1 ]=> st' / q' / Success ->
@@ -61,12 +54,18 @@ Inductive ceval : com -> state -> list (state * com) ->
     st / q =[ c ]=> st' / q' / Success ->
     st' / q' =[ while b do c end ]=> st'' / q'' / Success ->
     st / q =[ while b do c end ]=> st'' / q'' / Success
-| E_Choice1 : forall st st' q q' c1 c2,
-    st / ((st , c2)::q) =[ c1 ]=> st' / q' / Success ->
-    st / q =[ c1 !! c2 ]=> st' / q' / Success
-| E_Choice2 : forall st st' q q' c1 c2,
-    st / ((st , c1)::q) =[ c2 ]=> st' / q' / Success ->
-    st / q =[ c1 !! c2 ]=> st' / q' / Success
+(* | E_Choice1 : forall st st' q q' c1 c2, *)
+(*     st / ((st , c2)::q) =[ c1 ]=> st' / q' / Success -> *)
+(*     st / q =[ c1 !! c2 ]=> st' / q' / Success *)
+(* | E_Choice2 : forall st st' q q' c1 c2, *)
+(*     st / ((st , c1)::q) =[ c2 ]=> st' / q' / Success -> *)
+(*     st / q =[ c1 !! c2 ]=> st' / q' / Success *)
+| E_Choice1 : forall st st' q q' c1 c2 res,
+    st / q =[ c1 ]=> st' / q' / res ->
+    st / q =[ c1 !! c2 ]=> st' / ((st , c2)::q') / res
+| E_Choice2 : forall st st' q q' c1 c2 res,
+    st / q =[ c2 ]=> st' / q' / res ->
+    st / q =[ c1 !! c2 ]=> st' / ((st , c1)::q') / res
 | E_GuardTrue : forall st st' q q' b c,
     beval st b = true ->
     st / q =[ c ]=> st' / q' / Success ->
@@ -233,7 +232,7 @@ Proof.
   - unfold cequiv_imp. intros.
     inversion H; subst.
     inversion H2; subst. simpl in H2. 
-    inversion H5; subst. simpl in H5.
+    inversion H9; subst. simpl in H9.
     inversion H8; subst. simpl in H8.
     inversion H11; subst. simpl in H11.
     (* Choice 1 - Guard true *)
@@ -242,11 +241,11 @@ Proof.
     -- inversion H14; subst. 
        (*symmetry in H4*)
        inversion H4; subst.
-       inversion H6; subst.
+       inversion H5; subst.
        eexists.
        eapply E_Asng. reflexivity.
     (* Choice 2 - Guard true *)
-    -- inversion H5; subst. simpl in H5.
+    -- inversion H9; subst. simpl in H9.
        inversion H8; subst.
        eexists.
       --- inversion H11; subst.
@@ -268,49 +267,135 @@ Qed.
 Lemma choice_idempotent: forall c,
 <{ c !! c }> == <{ c }>.
 Proof.
-  split.
-    - eexists.
-    inversion H; subst.
-    -- 
-  
-  - destruct c; unfold cequiv_imp; intros;
-    inversion H; subst;
-    inversion H7; subst; eexists.
-    -- eapply E_Skip.
-    -- eapply E_Skip.
-    -- eapply E_Asng. reflexivity.
-    -- eapply E_Asng. reflexivity.
-    -- inversion H9; inversion H2;
-    inversion H7; inversion H11; subst.
-    --- eapply E_Seq. eexists. eapply E_Skip.
-    -- eexists. eapply E_Asng. reflexivity.
-    -- eexists. admit.
-    -- inversion H1; subst.
-      --- .
+split; unfold cequiv_imp; intros.
+  - inversion H; subst; eexists; eassumption.
+  - inversion H; subst; eexists; try apply E_Choice1; try eassumption.
 Qed.
 
 Lemma choice_comm: forall c1 c2,
 <{ c1 !! c2 }> == <{ c2 !! c1 }>.
 Proof.
-  (* TODO *)
-Qed.
+  split; unfold cequiv_imp; intros.
+  - inversion H; subst. 
+    -- eexists. 
+       eapply E_Choice2. 
+       eassumption.
+    -- eexists. 
+       eapply E_Choice1. 
+       eassumption.
+  - inversion H; subst. 
+    -- eexists. 
+       eapply E_Choice2. 
+       eassumption.
+    -- eexists. 
+       eapply E_Choice1. 
+       eassumption.
+Qed. 
 
 Lemma choice_assoc: forall c1 c2 c3,
 <{ (c1 !! c2) !! c3 }> == <{ c1 !! (c2 !! c3) }>.
 Proof.
-  (* TODO *)
+split; unfold cequiv_imp; intros.
+  - inversion H; subst.
+    inversion H7; subst.
+    -- eexists.  
+       eapply E_Choice1.
+       eassumption.
+    -- eexists.
+       eapply E_Choice2.
+       eapply E_Choice1. 
+       eassumption.
+    -- eexists.
+       eapply E_Choice2.
+       eapply E_Choice2. 
+       eassumption.
+  - inversion H; subst.
+    -- eexists.
+       eapply E_Choice1.
+       eapply E_Choice1.
+       eassumption.
+    -- inversion H7; subst.
+      --- eexists.
+          eapply E_Choice1.
+          eapply E_Choice2.
+          eassumption.
+      --- eexists.
+          eapply E_Choice2.
+          eassumption.   
 Qed.
 
 
 Lemma choice_seq_distr_l: forall c1 c2 c3,
 <{ c1 ; (c2 !! c3)}> == <{ (c1;c2) !! (c1;c3) }>.
 Proof.
-  (* TODO *)
+split; unfold cequiv_imp; intros.
+  - inversion H; subst.
+    inversion H8; subst.
+    -- eexists.
+       apply E_Choice1.
+       eapply E_Seq.
+      --- instantiate (1:=q').
+          instantiate (1:=st').
+          assumption.
+      --- instantiate (1:=q'0).
+          assumption.
+    -- eexists. 
+       apply E_Choice2.
+       eapply E_Seq.
+      --- instantiate (1:=q').
+          instantiate (1:=st').
+          assumption.
+      --- instantiate (1:=q'0).
+          assumption.
+  - inversion H; subst.
+    inversion H7; subst.
+    -- eexists.
+       eapply E_Seq.
+      --- instantiate (1:=q'0).
+          instantiate (1:=st').
+          assumption.
+      --- eapply E_Choice1.
+          instantiate (1:=q').
+          assumption.
+    -- inversion H7; subst.
+       eexists.
+       eapply E_Seq.
+      --- instantiate (1:=q'0).
+          instantiate (1:=st').
+          assumption.
+      ---  apply E_Choice2.
+           instantiate (1:=q').
+           assumption.
 Qed.
 
 Lemma choice_congruence: forall c1 c1' c2 c2',
 c1 == c1' -> c2 == c2' ->
 <{ c1 !! c2 }> == <{ c1' !! c2' }>.
 Proof.
-  (* TODO *)
+intros c1 c1' c2 c2' H_Eq1 H_Eq2.
+split.
+  - unfold cequiv_imp; intros.
+    inversion H; subst.
+    -- apply H_Eq1 in H7. 
+       inversion H7.
+       eexists.
+       apply E_Choice1.
+       eassumption.
+    -- apply H_Eq2 in H7. 
+       inversion H7.
+       eexists.
+       apply E_Choice2.
+       eassumption.
+  - unfold cequiv_imp; intros.
+    inversion H; subst.
+    -- apply H_Eq1 in H7. 
+       inversion H7.
+       eexists.
+       apply E_Choice1.
+       eassumption.
+    -- apply H_Eq2 in H7. 
+       inversion H7.
+       eexists.
+       apply E_Choice2.
+       eassumption.
 Qed.
