@@ -94,10 +94,10 @@ end
 ]=> (Z !-> 4 ; X !-> 2) / [] / Success.
 Proof.
 apply E_Seq with (X !-> 2) [].
-    - apply E_Asng. reflexivity.
-    - apply E_IfFalse.
-      reflexivity.
-      apply E_Asng. reflexivity.
+  - apply E_Asng. reflexivity.
+  - apply E_IfFalse.
+    -- reflexivity.
+    -- apply E_Asng. reflexivity.
 Qed.
 
 
@@ -141,7 +141,7 @@ eapply E_Seq.
        rewrite <- H.
        apply E_Asng. reflexivity.
 Qed.
-    
+
 Example ceval_example_guard4: exists q,
 empty_st / [] =[
    (X := 1 !! X := 2);
@@ -150,16 +150,13 @@ empty_st / [] =[
 Proof.
 eexists.
 eapply E_Seq.
-  - apply E_Choice1. apply E_Asng. reflexivity.
-  - eapply E_GuardFalseCont; try reflexivity.
-    -- apply E_Asng. reflexivity.
-    -- reflexivity.
+  - apply E_Choice2. apply E_Asng. reflexivity.
+  - eapply E_GuardTrue; try reflexivity.
     -- assert ((X!->3 ; X!->2)=(X!->3)) by (apply t_update_shadow).
        rewrite <- H.
        apply E_Asng.
        reflexivity.
 Qed.
-
 
 (* 3.2. Behavioral equivalence *)
 
@@ -189,7 +186,6 @@ split.
     inversion H2; subst; simpl in H2.
     inversion H8; subst; simpl in H8.
     inversion H10; subst; simpl in H10.
-    clear H3.
     -- eapply E_Asng. reflexivity.
     -- discriminate.
     -- discriminate.
@@ -206,9 +202,7 @@ Lemma cequiv_ex2:
 <{ (X := 1 !! X := 2); X = 2 -> skip }> == 
 <{ X := 2 }>.
 Proof.
-  split.
-  (*   <{ X := 1 !! X := 2; X = 2 -> skip }> =
-  <{ X := 2 }> *)
+split.
   - unfold cequiv_imp. intros.
     inversion H; subst.
     inversion H2; subst; simpl in H2. 
@@ -223,13 +217,14 @@ Proof.
        inversion H5; subst.
        eexists.
        eapply E_Asng. reflexivity.
-    (* Choice 2 - Guard true *)
     -- inversion H9; subst; simpl in H9.
        inversion H8; subst.
        eexists.
+      (* Choice 2 - Guard true *)
       --- inversion H11; subst.
           inversion H3; subst.
           eapply E_Asng. reflexivity.
+      (* Choice 2 - Guard false *)
       --- discriminate.  
   - eexists.
     inversion H; subst; simpl in H.
@@ -248,7 +243,7 @@ Lemma choice_idempotent: forall c,
 Proof.
 split; unfold cequiv_imp; intros.
   - inversion H; subst; eexists; eassumption.
-  - inversion H; subst; eexists; try apply E_Choice1; try eassumption.
+  - inversion H; subst; eexists; apply E_Choice1; eassumption.
 Qed.
 
 Lemma choice_comm: forall c1 c2,
@@ -338,9 +333,8 @@ c1 == c1' -> c2 == c2' ->
 <{ c1 !! c2 }> == <{ c1' !! c2' }>.
 Proof.
 intros c1 c1' c2 c2' H_Eq1 H_Eq2.
-split.
-  - unfold cequiv_imp; intros.
-    inversion H; subst.
+split; unfold cequiv_imp; intros.
+  - inversion H; subst.
     -- apply H_Eq1 in H7. 
        inversion H7.
        eexists.
@@ -351,8 +345,7 @@ split.
        eexists.
        apply E_Choice2.
        eassumption.
-  - unfold cequiv_imp; intros.
-    inversion H; subst.
+  - inversion H; subst.
     -- apply H_Eq1 in H7. 
        inversion H7.
        eexists.

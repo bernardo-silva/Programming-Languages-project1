@@ -1,12 +1,10 @@
 # Group Identification
 
  - Bernardo Silva, ist193365, bfalmeidasilva@tecnico.ulisboa.pt
- - FirstName LastName, IST number, Email
- - FirstName LastName, IST number, Email
+ - Daniel Braun, ist1104238, Email
+ - Malte Richter, ist1104524, Email
 
 # Implemented Features
-TODO: Identify what you have done and, in particular, **identify any missing features**.
+All the tasks have been accomplished.
 
 # Extras
-TODO: Identify and describe additional work that you have done,
-      so that it can be considered for extra credits.
