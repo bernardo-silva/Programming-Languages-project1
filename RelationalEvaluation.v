@@ -54,12 +54,6 @@ Inductive ceval : com -> state -> list (state * com) ->
     st / q =[ c ]=> st' / q' / Success ->
     st' / q' =[ while b do c end ]=> st'' / q'' / Success ->
     st / q =[ while b do c end ]=> st'' / q'' / Success
-(* | E_Choice1 : forall st st' q q' c1 c2, *)
-(*     st / ((st , c2)::q) =[ c1 ]=> st' / q' / Success -> *)
-(*     st / q =[ c1 !! c2 ]=> st' / q' / Success *)
-(* | E_Choice2 : forall st st' q q' c1 c2, *)
-(*     st / ((st , c1)::q) =[ c2 ]=> st' / q' / Success -> *)
-(*     st / q =[ c1 !! c2 ]=> st' / q' / Success *)
 | E_Choice1 : forall st st' q q' c1 c2 res,
     st / q =[ c1 ]=> st' / q' / res ->
     st / q =[ c1 !! c2 ]=> st' / ((st , c2)::q') / res
@@ -99,7 +93,7 @@ if (X <= 1)
 end
 ]=> (Z !-> 4 ; X !-> 2) / [] / Success.
 Proof.
-  apply E_Seq with (X !-> 2) [].
+apply E_Seq with (X !-> 2) [].
     - apply E_Asng. reflexivity.
     - apply E_IfFalse.
       reflexivity.
@@ -113,12 +107,9 @@ empty_st / [] =[
    (X = 1) -> X:=3
 ]=> (empty_st) / [] / Fail.
 Proof.
-  eapply E_Seq.
+eapply E_Seq.
   - apply E_Asng. reflexivity.
   - apply E_GuardFalseEmpty. reflexivity.
-(*   eapply E_SeqFail2 with(X !-> 2). *)
-(*     - apply E_Asng. reflexivity. *)
-(*     - apply E_GuardFalseEmpty. reflexivity.    *)
 Qed. 
 
 Example ceval_example_guard2:
@@ -127,11 +118,11 @@ empty_st / [] =[
    (X = 2) -> X:=3
 ]=> (X !-> 3 ; X !-> 2) / [] / Success.
 Proof.
-  apply E_Seq with (X!->2) [].
-    - apply E_Asng. reflexivity.
-    - apply E_GuardTrue.
-      -- reflexivity.
-      -- apply E_Asng. reflexivity.
+apply E_Seq with (X!->2) [].
+  - apply E_Asng. reflexivity.
+  - apply E_GuardTrue.
+    -- reflexivity.
+    -- apply E_Asng. reflexivity.
 Qed. 
 
 Example ceval_example_guard3: exists q,
@@ -140,8 +131,8 @@ empty_st / [] =[
    (X = 2) -> X := 3
 ]=> (X !-> 3) / q / Success.
 Proof.
-  eexists ?[x].
-  apply E_Seq with (X!->2) ?x.
+eexists.
+eapply E_Seq.
   - apply E_Choice2.
     apply E_Asng. reflexivity.
   - apply E_GuardTrue.
@@ -157,8 +148,8 @@ empty_st / [] =[
    (X = 2) -> X:=3
 ]=> (X !-> 3) / q / Success.
 Proof.
-  eexists.
-  eapply E_Seq.
+eexists.
+eapply E_Seq.
   - apply E_Choice1. apply E_Asng. reflexivity.
   - eapply E_GuardFalseCont; try reflexivity.
     -- apply E_Asng. reflexivity.
@@ -167,18 +158,7 @@ Proof.
        rewrite <- H.
        apply E_Asng.
        reflexivity.
-(*
-  eexists ?[x].
-  apply E_Seq with (X!->1) [(empty_st,<{X:=2}>)].
-  - apply E_Choice1. apply E_Asng. reflexivity.
-  - apply E_GuardFalseCont with empty_st (X!->2) [] [] <{ X := 2 }>; try reflexivity.
-    -- apply E_Asng. reflexivity.
-    -- assert ((X!->3 ; X!->2)=(X!->3)) by (apply t_update_shadow).
-       rewrite <- H.
-       apply E_Asng.
-       reflexivity.*)
 Qed.
-
 
 
 (* 3.2. Behavioral equivalence *)
@@ -203,12 +183,12 @@ Lemma cequiv_ex1:
 <{ X := 2; X = 2 -> skip }> == 
 <{ X := 2 }>.
 Proof.
-  split.
-  - eexists. instantiate (1:=q2).
+split.
+  - eexists.
     inversion H; subst.
-    inversion H2; subst. simpl in H2.
-    inversion H8; subst. simpl in H8.
-    inversion H10; subst. simpl in H10.
+    inversion H2; subst; simpl in H2.
+    inversion H8; subst; simpl in H8.
+    inversion H10; subst; simpl in H10.
     clear H3.
     -- eapply E_Asng. reflexivity.
     -- discriminate.
@@ -231,21 +211,20 @@ Proof.
   <{ X := 2 }> *)
   - unfold cequiv_imp. intros.
     inversion H; subst.
-    inversion H2; subst. simpl in H2. 
-    inversion H9; subst. simpl in H9.
-    inversion H8; subst. simpl in H8.
-    inversion H11; subst. simpl in H11.
+    inversion H2; subst; simpl in H2. 
+    inversion H9; subst; simpl in H9.
+    inversion H8; subst; simpl in H8.
+    inversion H11; subst; simpl in H11.
     (* Choice 1 - Guard true *)
     -- discriminate.
     (* Choice 1 - Guard false *)
     -- inversion H14; subst. 
-       (*symmetry in H4*)
        inversion H4; subst.
        inversion H5; subst.
        eexists.
        eapply E_Asng. reflexivity.
     (* Choice 2 - Guard true *)
-    -- inversion H9; subst. simpl in H9.
+    -- inversion H9; subst; simpl in H9.
        inversion H8; subst.
        eexists.
       --- inversion H11; subst.
@@ -258,7 +237,7 @@ Proof.
     eapply E_Seq.
     -- eapply E_Choice2. 
        eapply E_Asng. reflexivity.
-    -- simpl. eapply E_GuardTrue; 
+    -- eapply E_GuardTrue; 
        try reflexivity.
        eapply E_Skip.
 Qed.
@@ -275,7 +254,7 @@ Qed.
 Lemma choice_comm: forall c1 c2,
 <{ c1 !! c2 }> == <{ c2 !! c1 }>.
 Proof.
-  split; unfold cequiv_imp; intros.
+split; unfold cequiv_imp; intros.
   - inversion H; subst. 
     -- eexists. 
        eapply E_Choice2. 
@@ -333,39 +312,25 @@ split; unfold cequiv_imp; intros.
     inversion H8; subst.
     -- eexists.
        apply E_Choice1.
-       eapply E_Seq.
-      --- instantiate (1:=q').
-          instantiate (1:=st').
-          assumption.
-      --- instantiate (1:=q'0).
-          assumption.
+       eapply E_Seq;
+       eassumption.
     -- eexists. 
        apply E_Choice2.
-       eapply E_Seq.
-      --- instantiate (1:=q').
-          instantiate (1:=st').
-          assumption.
-      --- instantiate (1:=q'0).
-          assumption.
+       eapply E_Seq;
+       eassumption.
   - inversion H; subst.
     inversion H7; subst.
     -- eexists.
-       eapply E_Seq.
-      --- instantiate (1:=q'0).
-          instantiate (1:=st').
-          assumption.
+       eapply E_Seq;
+       try eassumption.
       --- eapply E_Choice1.
-          instantiate (1:=q').
-          assumption.
+          eassumption.
     -- inversion H7; subst.
        eexists.
        eapply E_Seq.
-      --- instantiate (1:=q'0).
-          instantiate (1:=st').
-          assumption.
+      ---  eassumption.
       ---  apply E_Choice2.
-           instantiate (1:=q').
-           assumption.
+           eassumption.
 Qed.
 
 Lemma choice_congruence: forall c1 c1' c2 c2',
