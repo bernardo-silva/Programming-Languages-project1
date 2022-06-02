@@ -137,16 +137,6 @@ Proof. auto. Qed.
   2.2. TODO: Prove p1_equals_p2. Recall that p1 and p2 are defined in Imp.v
 *)
 
-(* Proof.
-  induction i1 as [|i1']; intros i2 st st' c cont Hle Hceval. *)
-(*   - simpl in Hceval. discriminate Hceval. *)
-(*   - destruct i2 as [|i2']. inversion Hle. *)
-(*   assert (Hle': i1' <= i2') by lia. *)
-(*   destruct c; try apply Hceval. *)
-(*       + rewrite <- Hceval. simpl. destruct (ceval_step st c1 cont i2') eqn:Heqst1'o. *)
-(*         * apply (IHi1' i2') in Heqst1'o. *)
-(*   Assume. *)
-
 
 (* 
   This therorem state that, given enough gas (i0),
